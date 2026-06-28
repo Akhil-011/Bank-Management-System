@@ -1,36 +1,17 @@
-# Compiled class files
+target/
+
+.classpath
+.project
+.settings/
+
+.vscode/
+
+.idea/
+
+*.log
+
 *.class
 
-# Package Files
-*.jar
-*.war
-*.ear
+.env
 
-# Maven
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
-
-# IDE
-.idea/
-*.iml
-*.iws
-*.ipr
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Log files
-*.log
+bin/

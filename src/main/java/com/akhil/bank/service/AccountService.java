@@ -1,147 +1,232 @@
 package com.akhil.bank.service;
 
+import java.math.BigDecimal;
+
 import com.akhil.bank.model.Account;
 import com.akhil.bank.repository.AccountRepository;
-import com.akhil.bank.util.AccountNumberGenerator;
-import com.akhil.bank.exception.BankException;
-import java.math.BigDecimal;
-import java.util.List;
+import com.akhil.bank.service.TransactionService;
+import com.akhil.bank.exception.AccountNotFoundException;
+import com.akhil.bank.exception.InsufficientBalanceException;
+import com.akhil.bank.exception.InvalidAmountException;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+
+public class AccountService {
+
+    private final AccountRepository accountRepository = new AccountRepository();
+
+    private final TransactionService transactionService = new TransactionService();
+
+    /**
+     * Deposit money into a user's account.
+     */
+    public void deposit(int userId, BigDecimal amount) {
+
+    if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        throw new IllegalArgumentException("Deposit amount must be greater than zero.");
+    }
+
+    Account account = accountRepository.getAccountByUserId(userId);
+
+    if (account == null) {
+        throw new AccountNotFoundException("Account not found.");
+    }
+
+    BigDecimal newBalance = account.getBalance().add(amount);
+
+    boolean updated = accountRepository.updateBalance(
+            account.getAccountId(),
+            newBalance
+    );
+
+    if (!updated) {
+        throw new RuntimeException("Failed to deposit money.");
+    }
+
+    // NEW CODE - Record transaction
+    transactionService.recordTransaction(
+            account.getAccountId(),
+            "DEPOSIT",
+            amount,
+            newBalance,
+            "Cash Deposit"
+    );
+
+    System.out.println();
+    System.out.println("======================================");
+    System.out.println(" Deposit Successful");
+    System.out.println("======================================");
+    System.out.println("Account Number : " + account.getAccountNumber());
+    System.out.println("Deposited      : INR " + amount);
+    System.out.println("New Balance    : INR " + newBalance);
+    System.out.println("======================================");
+}
+
+
+    /**
+ * Display account balance.
+ */
+public void checkBalance(int userId) {
+
+    Account account = accountRepository.getAccountByUserId(userId);
+
+    if (account == null) {
+        throw new IllegalArgumentException("Account not found.");
+    }
+
+    System.out.println();
+    System.out.println("======================================");
+    System.out.println(" Account Details");
+    System.out.println("======================================");
+    System.out.println("Account Number : " + account.getAccountNumber());
+    System.out.println("Account Type   : " + account.getAccountType());
+    System.out.println("Balance        : INR " + account.getBalance());
+    System.out.println("Status         : " + account.getStatus());
+    System.out.println("======================================");
+}
 
 /**
- * Service layer for Account business logic
+ * Withdraw money from account.
  */
-public class AccountService {
-    
-    private final AccountRepository accountRepository;
-    
-    public AccountService() {
-        this.accountRepository = new AccountRepository();
+public void withdraw(int userId, BigDecimal amount) {
+
+    if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        throw new IllegalArgumentException("Withdrawal amount must be greater than zero.");
     }
-    
-    /**
-     * Create a new account
-     */
-    public boolean createAccount(int userId, String accountType, BigDecimal initialBalance) throws BankException {
-        if (userId <= 0) {
-            throw new BankException("Invalid user ID");
-        }
-        
-        if (accountType == null || accountType.trim().isEmpty()) {
-            throw new BankException("Account type is required");
-        }
-        
-        if (initialBalance.compareTo(BigDecimal.ZERO) < 0) {
-            throw new BankException("Initial balance cannot be negative");
-        }
-        
-        Account account = new Account();
-        account.setUserId(userId);
-        account.setAccountNumber(AccountNumberGenerator.generateAccountNumber());
-        account.setAccountType(accountType);
-        account.setBalance(initialBalance);
-        account.setCurrency("USD");
-        account.setStatus("Active");
-        
-        return accountRepository.createAccount(account);
+
+    Account account = accountRepository.getAccountByUserId(userId);
+
+    if (account == null) {
+        throw new IllegalArgumentException("Account not found.");
     }
-    
-    /**
-     * Get account by ID
-     */
-    public Account getAccountById(int accountId) throws BankException {
-        Account account = accountRepository.getAccountById(accountId);
-        if (account == null) {
-            throw new BankException("Account not found");
-        }
-        return account;
+
+    if (account.getBalance().compareTo(amount) < 0) {
+        throw new IllegalArgumentException("Insufficient balance.");
     }
-    
-    /**
-     * Get accounts by user ID
-     */
-    public List<Account> getAccountsByUserId(int userId) throws BankException {
-        if (userId <= 0) {
-            throw new BankException("Invalid user ID");
-        }
-        return accountRepository.getAccountsByUserId(userId);
+
+    BigDecimal newBalance = account.getBalance().subtract(amount);
+
+    boolean updated = accountRepository.updateBalance(
+            account.getAccountId(),
+            newBalance
+    );
+
+    if (!updated) {
+        throw new RuntimeException("Failed to withdraw money.");
     }
-    
-    /**
-     * Deposit money to account
-     */
-    public boolean deposit(int accountId, BigDecimal amount) throws BankException {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BankException("Deposit amount must be greater than zero");
-        }
-        
-        Account account = getAccountById(accountId);
-        account.setBalance(account.getBalance().add(amount));
-        
-        return accountRepository.updateAccount(account);
+
+    System.out.println();
+    System.out.println("======================================");
+    System.out.println(" Withdrawal Successful");
+    System.out.println("======================================");
+    System.out.println("Account Number : " + account.getAccountNumber());
+    System.out.println("Withdrawn      : INR " + amount);
+    System.out.println("New Balance    : INR " + newBalance);
+    System.out.println("======================================");
+}
+
+/**
+ * Transfer money between two accounts.
+ */
+public void transfer(int senderUserId,
+                     String receiverAccountNumber,
+                     BigDecimal amount) {
+
+    if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+        throw new IllegalArgumentException("Transfer amount must be greater than zero.");
     }
-    
-    /**
-     * Withdraw money from account
-     */
-    public boolean withdraw(int accountId, BigDecimal amount) throws BankException {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BankException("Withdrawal amount must be greater than zero");
+
+    Connection conn = accountRepository.getConnection();
+
+    try {
+
+        conn.setAutoCommit(false);
+
+        Account sender = accountRepository.getAccountByUserId(senderUserId);
+
+        if (sender == null) {
+            throw new IllegalArgumentException("Sender account not found.");
         }
-        
-        Account account = getAccountById(accountId);
-        
-        if (account.getBalance().compareTo(amount) < 0) {
-            throw new BankException("Insufficient funds");
+
+        Account receiver = accountRepository.getAccountByAccountNumber(receiverAccountNumber);
+
+        if (receiver == null) {
+            throw new IllegalArgumentException("Receiver account not found.");
         }
-        
-        account.setBalance(account.getBalance().subtract(amount));
-        
-        return accountRepository.updateAccount(account);
+
+        if (sender.getAccountNumber().equals(receiver.getAccountNumber())) {
+            throw new IllegalArgumentException("Cannot transfer to the same account.");
+        }
+
+        if (sender.getBalance().compareTo(amount) < 0) {
+            throw new IllegalArgumentException("Insufficient balance.");
+        }
+
+        BigDecimal senderBalance = sender.getBalance().subtract(amount);
+        BigDecimal receiverBalance = receiver.getBalance().add(amount);
+
+        accountRepository.updateBalance(
+                conn,
+                sender.getAccountId(),
+                senderBalance);
+
+        accountRepository.updateBalance(
+                conn,
+                receiver.getAccountId(),
+                receiverBalance);
+
+        conn.commit();
+
+
+    transactionService.recordTransaction(
+        sender.getAccountId(),
+        "TRANSFER_OUT",
+        amount,
+        senderBalance,
+        "Transfer to " + receiver.getAccountNumber()
+);
+
+transactionService.recordTransaction(
+        receiver.getAccountId(),
+        "TRANSFER_IN",
+        amount,
+        receiverBalance,
+        "Transfer from " + sender.getAccountNumber()
+);
+
+        System.out.println();
+        System.out.println("======================================");
+        System.out.println(" Transfer Successful");
+        System.out.println("======================================");
+        System.out.println("From Account : " + sender.getAccountNumber());
+        System.out.println("To Account   : " + receiver.getAccountNumber());
+        System.out.println("Amount       : INR " + amount);
+        System.out.println("======================================");
+
+    } catch (Exception e) {
+
+        try {
+            conn.rollback();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+
+        throw new RuntimeException(e);
+
+    } finally {
+
+        try {
+            conn.setAutoCommit(true);
+            conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
-    
-    /**
-     * Transfer money between accounts
-     */
-    public boolean transfer(int fromAccountId, int toAccountId, BigDecimal amount) throws BankException {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BankException("Transfer amount must be greater than zero");
-        }
-        
-        Account fromAccount = getAccountById(fromAccountId);
-        Account toAccount = getAccountById(toAccountId);
-        
-        if (fromAccount.getBalance().compareTo(amount) < 0) {
-            throw new BankException("Insufficient funds in source account");
-        }
-        
-        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
-        toAccount.setBalance(toAccount.getBalance().add(amount));
-        
-        // Update both accounts
-        accountRepository.updateAccount(fromAccount);
-        accountRepository.updateAccount(toAccount);
-        
-        return true;
-    }
-    
-    /**
-     * Close account
-     */
-    public boolean closeAccount(int accountId) throws BankException {
-        Account account = getAccountById(accountId);
-        
-        if (account.getBalance().compareTo(BigDecimal.ZERO) > 0) {
-            throw new BankException("Cannot close account with remaining balance");
-        }
-        
-        account.setStatus("Closed");
-        return accountRepository.updateAccount(account);
-    }
-    
-    /**
-     * Get all accounts
-     */
-    public List<Account> getAllAccounts() {
-        return accountRepository.getAllAccounts();
-    }
+}
+
+public Account getAccountByUserId(int userId) {
+    return accountRepository.getAccountByUserId(userId);
+}
+
 }

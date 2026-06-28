@@ -1,88 +1,40 @@
 package com.akhil.bank.model;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 public class Transaction {
 
-    private int id;
-    private String senderAccount;
-    private String receiverAccount;
-    private BigDecimal amount;
-    private String transactionType;
-    private Timestamp createdAt;
-
+    private int transactionId;
     private int accountId;
+    private String transactionType;
+    private BigDecimal amount;
+    private BigDecimal balanceAfter;
     private String description;
-    private String status;
-    private LocalDateTime transactionDate;
+    private LocalDateTime createdAt;
 
     public Transaction() {
     }
 
-    public Transaction(String senderAccount, String receiverAccount,
-                       BigDecimal amount, String transactionType) {
-        this.senderAccount = senderAccount;
-        this.receiverAccount = receiverAccount;
-        this.amount = amount;
+    public Transaction(int accountId,
+                       String transactionType,
+                       BigDecimal amount,
+                       BigDecimal balanceAfter,
+                       String description) {
+
+        this.accountId = accountId;
         this.transactionType = transactionType;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public String getSenderAccount() {
-        return senderAccount;
-    }
-
-    public String getReceiverAccount() {
-        return receiverAccount;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public String getTransactionType() {
-        return transactionType;
-    }
-
-    public Timestamp getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public void setSenderAccount(String senderAccount) {
-        this.senderAccount = senderAccount;
-    }
-
-    public void setReceiverAccount(String receiverAccount) {
-        this.receiverAccount = receiverAccount;
-    }
-
-    public void setAmount(BigDecimal amount) {
         this.amount = amount;
-    }
-
-    public void setTransactionType(String transactionType) {
-        this.transactionType = transactionType;
-    }
-
-    public void setCreatedAt(Timestamp createdAt) {
-        this.createdAt = createdAt;
+        this.balanceAfter = balanceAfter;
+        this.description = description;
     }
 
     public int getTransactionId() {
-        return id;
+        return transactionId;
     }
 
     public void setTransactionId(int transactionId) {
-        this.id = transactionId;
+        this.transactionId = transactionId;
     }
 
     public int getAccountId() {
@@ -93,6 +45,30 @@ public class Transaction {
         this.accountId = accountId;
     }
 
+    public String getTransactionType() {
+        return transactionType;
+    }
+
+    public void setTransactionType(String transactionType) {
+        this.transactionType = transactionType;
+    }
+
+    public BigDecimal getAmount() {
+        return amount;
+    }
+
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
+    }
+
+    public BigDecimal getBalanceAfter() {
+        return balanceAfter;
+    }
+
+    public void setBalanceAfter(BigDecimal balanceAfter) {
+        this.balanceAfter = balanceAfter;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -101,19 +77,11 @@ public class Transaction {
         this.description = description;
     }
 
-    public String getStatus() {
-        return status;
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getTransactionDate() {
-        return transactionDate;
-    }
-
-    public void setTransactionDate(LocalDateTime transactionDate) {
-        this.transactionDate = transactionDate;
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

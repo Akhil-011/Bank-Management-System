@@ -5,136 +5,155 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.akhil.bank.config.DatabaseConnection;
 import com.akhil.bank.model.Transaction;
 
-/**
- * Repository for Transaction data access operations
- */
 public class TransactionRepository {
-    
+
     /**
-     * Create a new transaction
+     * Save a transaction
      */
-    public boolean createTransaction(Transaction transaction) {
-        String query = "INSERT INTO transactions (account_id, transaction_type, amount, description, status, transaction_date) " +
-                      "VALUES (?, ?, ?, ?, ?, ?)";
-        
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            
-            stmt.setInt(1, transaction.getAccountId());
-            stmt.setString(2, transaction.getTransactionType());
-            stmt.setBigDecimal(3, transaction.getAmount());
-            stmt.setString(4, transaction.getDescription());
-            stmt.setString(5, transaction.getStatus());
-            stmt.setTimestamp(6, Timestamp.valueOf(transaction.getTransactionDate()));
-            
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to create transaction", e);
-        }
+    public boolean saveTransaction(Transaction transaction) {
+
+    //System.out.println(">>> Inside saveTransaction()");
+
+    String sql = """
+        INSERT INTO transactions
+        (account_id, transaction_type, amount, balance_after, description)
+        VALUES (?, ?, ?, ?, ?)
+        """;
+
+    try (Connection conn = DatabaseConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setInt(1, transaction.getAccountId());
+        stmt.setString(2, transaction.getTransactionType());
+        stmt.setBigDecimal(3, transaction.getAmount());
+        stmt.setBigDecimal(4, transaction.getBalanceAfter());
+        stmt.setString(5, transaction.getDescription());
+
+        int rows = stmt.executeUpdate();
+
+        //System.out.println(">>> Rows Inserted = " + rows);
+
+        return rows > 0;
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+        throw new RuntimeException("Failed to save transaction.", e);
     }
-    
+}
+
     /**
-     * Get transaction by ID
-     */
-    public Transaction getTransactionById(int transactionId) {
-        String query = "SELECT * FROM transactions WHERE transaction_id = ?";
-        
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            
-            stmt.setInt(1, transactionId);
-            ResultSet rs = stmt.executeQuery();
-            
-            if (rs.next()) {
-                return mapResultSetToTransaction(rs);
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to fetch transaction by id", e);
-        }
-        return null;
-    }
-    
-    /**
-     * Get transactions by account ID
+     * Get transactions for one account
      */
     public List<Transaction> getTransactionsByAccountId(int accountId) {
+
         List<Transaction> transactions = new ArrayList<>();
-        String query = "SELECT * FROM transactions WHERE account_id = ? ORDER BY transaction_date DESC";
-        
+
+        String sql = """
+                SELECT *
+                FROM transactions
+                WHERE account_id = ?
+                ORDER BY created_at DESC
+                """;
+
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
             stmt.setInt(1, accountId);
+
             ResultSet rs = stmt.executeQuery();
-            
+
             while (rs.next()) {
-                transactions.add(mapResultSetToTransaction(rs));
+                transactions.add(map(rs));
             }
+
         } catch (SQLException e) {
-            throw new IllegalStateException("Failed to fetch transactions by account id", e);
+            throw new RuntimeException(e);
         }
+
         return transactions;
     }
-    
-    /**
-     * Update transaction status
-     */
-    public boolean updateTransactionStatus(int transactionId, String status) {
-        String query = "UPDATE transactions SET status = ? WHERE transaction_id = ?";
-        
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-            
-            stmt.setString(1, status);
-            stmt.setInt(2, transactionId);
-            
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            throw new IllegalStateException("Failed to update transaction status", e);
+
+    public List<Transaction> getMiniStatement(int accountId) {
+
+    List<Transaction> transactions = new ArrayList<>();
+
+    String sql = """
+            SELECT *
+            FROM transactions
+            WHERE account_id = ?
+            ORDER BY created_at DESC
+            LIMIT 5
+            """;
+
+    try (Connection conn = DatabaseConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setInt(1, accountId);
+
+        ResultSet rs = stmt.executeQuery();
+
+        while (rs.next()) {
+            transactions.add(map(rs));
         }
+
+    } catch (SQLException e) {
+        throw new RuntimeException(e);
     }
+
+    return transactions;
+}
+
+
     
+
     /**
      * Get all transactions
      */
     public List<Transaction> getAllTransactions() {
+
         List<Transaction> transactions = new ArrayList<>();
-        String query = "SELECT * FROM transactions ORDER BY transaction_date DESC";
-        
+
+        String sql = "SELECT * FROM transactions ORDER BY created_at DESC";
+
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
-            
+             ResultSet rs = stmt.executeQuery(sql)) {
+
             while (rs.next()) {
-                transactions.add(mapResultSetToTransaction(rs));
+                transactions.add(map(rs));
             }
+
         } catch (SQLException e) {
-            throw new IllegalStateException("Failed to fetch all transactions", e);
+            throw new RuntimeException(e);
         }
+
         return transactions;
     }
-    
+
     /**
-     * Map ResultSet to Transaction object
+     * Map ResultSet to Transaction
      */
-    private Transaction mapResultSetToTransaction(ResultSet rs) throws SQLException {
-        Transaction transaction = new Transaction();
-        transaction.setTransactionId(rs.getInt("transaction_id"));
-        transaction.setAccountId(rs.getInt("account_id"));
-        transaction.setTransactionType(rs.getString("transaction_type"));
-        transaction.setAmount(rs.getBigDecimal("amount"));
-        transaction.setDescription(rs.getString("description"));
-        transaction.setStatus(rs.getString("status"));
-        transaction.setTransactionDate(rs.getTimestamp("transaction_date") != null ? 
-                                      rs.getTimestamp("transaction_date").toLocalDateTime() : null);
-        transaction.setCreatedAt(rs.getTimestamp("created_at"));
-        return transaction;
+    private Transaction map(ResultSet rs) throws SQLException {
+
+        Transaction t = new Transaction();
+
+        t.setTransactionId(rs.getInt("transaction_id"));
+        t.setAccountId(rs.getInt("account_id"));
+        t.setTransactionType(rs.getString("transaction_type"));
+        t.setAmount(rs.getBigDecimal("amount"));
+        t.setBalanceAfter(rs.getBigDecimal("balance_after"));
+        t.setDescription(rs.getString("description"));
+
+        if (rs.getTimestamp("created_at") != null) {
+            t.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+        }
+
+        return t;
     }
 }

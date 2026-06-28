@@ -21,3 +21,4 @@ public class PasswordUtil {
         return hashPassword(password).equals(hash);
     }
 }
+

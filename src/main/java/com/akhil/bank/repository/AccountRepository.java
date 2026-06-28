@@ -35,8 +35,9 @@ public class AccountRepository {
             
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            throw new IllegalStateException("Failed to create account", e);
-        }
+    e.printStackTrace();
+    throw new IllegalStateException("Failed to create account", e);
+}
     }
     
     /**
@@ -81,7 +82,91 @@ public class AccountRepository {
         }
         return accounts;
     }
+
+
+    public Account getAccountByUserId(int userId) {
+
+    String query = "SELECT * FROM accounts WHERE user_id = ?";
+
+    try (Connection conn = DatabaseConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(query)) {
+
+        stmt.setInt(1, userId);
+
+        ResultSet rs = stmt.executeQuery();
+
+        if (rs.next()) {
+            return mapResultSetToAccount(rs);
+        }
+
+    } catch (SQLException e) {
+        throw new IllegalStateException("Failed to fetch account.", e);
+    }
+
+    return null;
+}
+
+
+
+public boolean updateBalance(int accountId, java.math.BigDecimal balance) {
+
+    String sql = "UPDATE accounts SET balance = ? WHERE account_id = ?";
+
+    try (Connection conn = DatabaseConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setBigDecimal(1, balance);
+        stmt.setInt(2, accountId);
+
+        return stmt.executeUpdate() > 0;
+
+    } catch (SQLException e) {
+        throw new RuntimeException("Failed to update balance.", e);
+    }
+}
     
+public boolean updateBalance(Connection conn, int accountId, java.math.BigDecimal balance) {
+
+    String sql = "UPDATE accounts SET balance = ? WHERE account_id = ?";
+
+    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setBigDecimal(1, balance);
+        stmt.setInt(2, accountId);
+
+        return stmt.executeUpdate() > 0;
+
+    } catch (SQLException e) {
+        throw new RuntimeException("Failed to update balance.", e);
+    }
+}
+
+public Connection getConnection() {
+    return DatabaseConnection.getConnection();
+}
+
+public Account getAccountByAccountNumber(String accountNumber) {
+
+    String sql = "SELECT * FROM accounts WHERE account_number = ?";
+
+    try (Connection conn = DatabaseConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setString(1, accountNumber);
+
+        ResultSet rs = stmt.executeQuery();
+
+        if (rs.next()) {
+            return mapResultSetToAccount(rs);
+        }
+
+    } catch (SQLException e) {
+        throw new RuntimeException("Failed to fetch account.", e);
+    }
+
+    return null;
+}
+
     /**
      * Update account
      */
@@ -156,4 +241,52 @@ public class AccountRepository {
                             rs.getTimestamp("updated_at").toLocalDateTime() : null);
         return account;
     }
+
+    public boolean accountNumberExists(String accountNumber) {
+
+    String sql = "SELECT COUNT(*) FROM accounts WHERE account_number = ?";
+
+    try (Connection conn = DatabaseConnection.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setString(1, accountNumber);
+
+        ResultSet rs = stmt.executeQuery();
+
+        if (rs.next()) {
+            return rs.getInt(1) > 0;
+        }
+
+    } catch (SQLException e) {
+        throw new RuntimeException(e);
+    }
+
+    return false;
+}
+
+public boolean createAccount(Connection connection, Account account) {
+
+    String query = """
+        INSERT INTO accounts
+        (user_id, account_number, account_type, balance, currency, status)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """;
+
+    try (PreparedStatement stmt =
+            connection.prepareStatement(query)) {
+
+        stmt.setInt(1, account.getUserId());
+        stmt.setString(2, account.getAccountNumber());
+        stmt.setString(3, account.getAccountType());
+        stmt.setBigDecimal(4, account.getBalance());
+        stmt.setString(5, account.getCurrency());
+        stmt.setString(6, account.getStatus());
+
+        return stmt.executeUpdate() > 0;
+
+    } catch (SQLException e) {
+        throw new RuntimeException("Failed to create account.", e);
+    }
+}
+
 }

@@ -1,10 +1,15 @@
 package com.akhil.bank.util;
 
+import java.util.Random;
+
 public class AccountNumberGenerator {
 
-    private static long counter = 1000000000L;
+    private static final Random RANDOM = new Random();
 
-    public static synchronized String generateAccountNumber() {
-        return String.valueOf(counter++);
+    public static String generateAccountNumber() {
+
+        long number = 1_000_000_000L + RANDOM.nextInt(900_000_000);
+
+        return String.valueOf(number);
     }
 }

@@ -5,73 +5,56 @@ import java.time.LocalDateTime;
 
 public class Account {
 
-    private int id;
-    private String accountNumber;
+    private int accountId;
     private int userId;
-    private BigDecimal balance;
-    private String status;
-
+    private String accountNumber;
     private String accountType;
+    private BigDecimal balance;
     private String currency;
+    private String status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public Account() {
     }
 
-    public Account(String accountNumber, int userId, BigDecimal balance, String status) {
-        this.accountNumber = accountNumber;
+    public Account(int userId,
+                   String accountNumber,
+                   String accountType,
+                   BigDecimal balance,
+                   String currency,
+                   String status) {
+
         this.userId = userId;
+        this.accountNumber = accountNumber;
+        this.accountType = accountType;
         this.balance = balance;
+        this.currency = currency;
         this.status = status;
     }
 
-    public int getId() {
-        return id;
+    public int getAccountId() {
+        return accountId;
     }
 
-    public String getAccountNumber() {
-        return accountNumber;
+    public void setAccountId(int accountId) {
+        this.accountId = accountId;
     }
 
     public int getUserId() {
         return userId;
     }
 
-    public BigDecimal getBalance() {
-        return balance;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public void setAccountNumber(String accountNumber) {
-        this.accountNumber = accountNumber;
-    }
-
     public void setUserId(int userId) {
         this.userId = userId;
     }
 
-    public void setBalance(BigDecimal balance) {
-        this.balance = balance;
+    public String getAccountNumber() {
+        return accountNumber;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public int getAccountId() {
-        return id;
-    }
-
-    public void setAccountId(int accountId) {
-        this.id = accountId;
+    public void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
     }
 
     public String getAccountType() {
@@ -82,12 +65,28 @@ public class Account {
         this.accountType = accountType;
     }
 
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
+    }
+
     public String getCurrency() {
         return currency;
     }
 
     public void setCurrency(String currency) {
         this.currency = currency;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public LocalDateTime getCreatedAt() {
